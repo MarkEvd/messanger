@@ -30,6 +30,9 @@ class MainWindow(CTk):
         self.chat_field = CTkScrollableFrame(self)
         self.chat_field.place(x=0, y=0)
 
+        self.bg = CTkLabel(self.chat_field, text="")
+        self.bg.my_name = "bg"
+        self.bg.place(relx=0, rely=0,relwidth=1,relheight=1)
 
         self.message_input = CTkEntry(self, placeholder_text='Введіть повідомлення:')
         self.message_input.place(x=0, y=250)
@@ -41,7 +44,7 @@ class MainWindow(CTk):
 
         try:
             self.sock = socket(AF_INET, SOCK_STREAM)
-            self.sock.connect(('localhost', 8080))
+            #self.sock.connect(('localhost', 8080))
             hello = f"TEXT@{self.username}@[SYSTEM] {self.username} приєднався(лась) до чату!\n"
             self.sock.send(hello.encode('utf-8'))
             threading.Thread(target=self.recv_message, daemon=True).start()
@@ -63,11 +66,17 @@ class MainWindow(CTk):
             self.show_menu()
             # setting menu widgets
             self.label = CTkLabel(self.menu_frame, text='Імʼя')
-            self.label.pack(pady=30)
+            self.label.pack(pady=5)
             self.entry = CTkEntry(self.menu_frame)
             self.entry.pack()
             self.save_btn = CTkButton(self.menu_frame, text='Зберегти', command=self.save_username)
             self.save_btn.pack(pady=10)
+            self.bg_text = CTkLabel(self.menu_frame, text="Фон чату:")
+            self.bg_text.pack(pady=5)
+            self.open_bg_button = CTkButton(self.menu_frame, text='📂', width=40, height=30, command=self.replace_bg)
+            self.open_bg_button.pack(pady=5)
+            self.clear_button = CTkButton(self.menu_frame, text='🗑️', width=40, height=30, command=self.clear)
+            self.clear_button.pack(pady=5)
     def save_username(self):
         if self.entry and self.entry.get().strip():
             self.username = self.entry.get().strip()
@@ -85,6 +94,12 @@ class MainWindow(CTk):
                 self.entry.destroy()
             if hasattr(self, 'save_btn') and self.save_btn:
                 self.save_btn.destroy()
+            if hasattr(self, 'open_bg_button') and self.open_bg_button:
+                self.open_bg_button.destroy()
+            if hasattr(self, 'bg_text') and self.bg_text:
+                self.bg_text.destroy()
+            if hasattr(self, 'clear_button') and self.clear_button:
+                self.clear_button.destroy()
 
     def change_theme(self, value):
         if value == 'Темна':
@@ -213,6 +228,33 @@ class MainWindow(CTk):
             self.add_message(f"{self.username} надіслав(ла) зображення: {short_name}", img=ctk_img)
         except Exception as e:
             self.add_message(f"Не вдалося надіслати зображення: {e}")
+
+    def replace_bg(self):
+        file_name = filedialog.askopenfilename(
+            filetypes=[("Зображення", "*.jpg *.jpeg *.png *.gif *.bmp")])  # Додано фільтр типів файлів
+        if not file_name:
+            return
+        try:
+            # Відкриття та масштабування зображення перед відправкою
+            pil_img = Image.open(file_name)
+            # Обмежуємо максимальний розмір для відправки
+            max_size = (800, 800)
+            pil_img.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+            # Створюємо зображення для відображення в інтерфейсі
+            ctk_img = CTkImage(pil_img, size=(400, 270))
+            self.bg.configure(image=ctk_img)
+
+        except Exception as e:
+            self.add_message(f"Не вдалося відкрити зображення: {e}")
+
+    def clear(self):
+        children = self.chat_field.winfo_children()
+        for child in children:
+            if hasattr(child, "my_name") and child.my_name == "bg":
+                print()
+            else:
+                child.destroy()
 
 win = MainWindow()
 win.mainloop()
